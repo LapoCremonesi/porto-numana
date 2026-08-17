@@ -9,6 +9,22 @@ Sito web interattivo dedicato al **Porto Turistico di Numana** (Riviera del Cone
 
 Stack: **Node.js + Express** per il server e le API, **three.js** per il 3D, **anime.js** per le animazioni di interfaccia, **Leaflet** per la mappa.
 
+## Impostazione visiva
+
+Una sola palette in tutto il progetto — interfaccia e scena 3D — definita nelle variabili CSS
+di `public/css/style.css` e ripresa in `COLORI` di `public/js/scena3d.js`: grigi caldi neutri
+più **un unico accento**, il blu-ardesia `#31596b`. Nessun gradiente e nessuna ombra diffusa:
+la gerarchia si regge su spaziatura, peso tipografico e filetti da 1px.
+
+L'accento è riservato a ciò che il sito deve far trovare — segnaposti e percorso — così sul
+plastico grigio l'occhio va dove serve. Le categorie non hanno un colore proprio: si leggono
+nella scheda, non in sei tinte sparse sulla mappa.
+
+L'interfaccia ha pochi comandi, e uno solo è davvero necessario: **selezionare un'attività**.
+Da lì partono da sole scheda, inquadratura e calcolo del percorso, che è la domanda per cui
+esiste il sito. Elenco e scheda si alternano nella stessa colonna, così nessun pannello
+galleggiante copre mai la mappa.
+
 ---
 
 ## Avvio

@@ -59,10 +59,12 @@ export class MappaPorto {
   disegnaGeometria(geo) {
     this.gruppoGeometria.clearLayers();
 
+    // Bianco a bassa opacità: sulla foto satellitare la geometria deve leggersi
+    // come un lucido sovrapposto, non competere con l'immagine.
     const stili = {
-      molo: { color: '#f8fafc', weight: 5, opacity: 0.55 },
-      scogliera: { color: '#cbd5e1', weight: 2, opacity: 0.7, fillOpacity: 0.18 },
-      pontile: { color: '#7dd3fc', weight: 3, opacity: 0.85, dashArray: '1 6', lineCap: 'round' },
+      molo: { color: '#ffffff', weight: 4, opacity: 0.45 },
+      scogliera: { color: '#ffffff', weight: 1.5, opacity: 0.5, fillOpacity: 0.1 },
+      pontile: { color: '#ffffff', weight: 2, opacity: 0.65, dashArray: '2 5', lineCap: 'round' },
     };
 
     for (const m of geo.moli) {
@@ -82,29 +84,28 @@ export class MappaPorto {
     }
   }
 
-  /** Crea i marker delle aziende. */
+  /**
+   * Crea i marker delle aziende.
+   * Un solo segno per tutte le categorie: la distinzione sta nella scheda, non
+   * in sei colori diversi sparsi sulla foto.
+   */
   disegnaAziende(aziende, categorie) {
     this.gruppoMarker.clearLayers();
     this.marker.clear();
 
+    const icona = L.divIcon({
+      className: 'marker-azienda',
+      html: '<span class="marker-punto"></span>',
+      iconSize: [11, 11],
+      iconAnchor: [5.5, 5.5],
+      popupAnchor: [0, -8],
+    });
+
     for (const a of aziende) {
       const cat = categorie[a.categoria];
-      const icona = L.divIcon({
-        className: 'marker-azienda',
-        html: `<span class="marker-pin" style="--tinta:${cat.colore}">
-                 <span class="marker-icona">${cat.icona}</span>
-               </span>`,
-        iconSize: [34, 42],
-        iconAnchor: [17, 40],
-        popupAnchor: [0, -36],
-      });
-
       const marker = L.marker([a.lat, a.lon], { icon: icona, title: a.nome })
         .addTo(this.gruppoMarker)
-        .bindPopup(
-          `<strong>${a.nome}</strong><br><span class="popup-cat">${cat.etichetta}</span>` +
-            (a.settore ? `<br><span class="popup-settore">${a.settore}</span>` : '')
-        );
+        .bindPopup(`<b>${a.nome}</b><br><span>${a.settore ?? cat.etichetta}</span>`);
 
       marker.on('click', () => this.alSelezionare?.(a.id));
       this.marker.set(a.id, marker);
@@ -140,30 +141,32 @@ export class MappaPorto {
     this.gruppoPercorso.clearLayers();
     if (!punti?.length) return;
 
-    // Alone scuro sotto, linea colorata sopra: si legge anche sul satellite.
-    L.polyline(punti, { color: '#0b1120', weight: 9, opacity: 0.55 }).addTo(this.gruppoPercorso);
+    // Alone bianco sotto, tratto d'accento sopra: leggibile sulla foto senza
+    // introdurre un secondo colore nella tavolozza.
+    L.polyline(punti, { color: '#ffffff', weight: 7, opacity: 0.9 }).addTo(this.gruppoPercorso);
     const linea = L.polyline([], {
-      color: '#38bdf8',
-      weight: 4,
-      opacity: 0.95,
+      color: '#31596b',
+      weight: 3,
+      opacity: 1,
       lineJoin: 'round',
     }).addTo(this.gruppoPercorso);
 
+    // Partenza: anello vuoto. Arrivo: pieno. Stessa logica dei marker.
     L.circleMarker(punti[0], {
-      radius: 7,
-      color: '#f8fafc',
+      radius: 5,
+      color: '#31596b',
       weight: 2,
-      fillColor: '#22c55e',
+      fillColor: '#ffffff',
       fillOpacity: 1,
     })
       .bindTooltip('Partenza')
       .addTo(this.gruppoPercorso);
 
     L.circleMarker(punti[punti.length - 1], {
-      radius: 7,
-      color: '#f8fafc',
+      radius: 5.5,
+      color: '#ffffff',
       weight: 2,
-      fillColor: '#f43f5e',
+      fillColor: '#31596b',
       fillOpacity: 1,
     })
       .bindTooltip('Arrivo')

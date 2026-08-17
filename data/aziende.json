@@ -2,12 +2,12 @@
   "aggiornato": "2026-08-17",
   "nota": "Dataset compilato da fonti pubbliche (siti ufficiali degli operatori, Guardia Costiera, portali turistici) e da OpenStreetMap. Il campo 'precisione' indica come è stata ottenuta la posizione: 'osm' = coordinate rilevate su OpenStreetMap; 'stimata' = punto collocato sulla banchina/molo indicato dall'indirizzo pubblicato, con un margine di alcune decine di metri. Contatti e orari possono cambiare: verificare sempre sul sito dell'operatore.",
   "categorie": {
-    "ormeggio": { "etichetta": "Ormeggi e circoli nautici", "colore": "#2dd4bf", "icona": "⚓" },
-    "nautica": { "etichetta": "Nautica, cantieri e noleggio", "colore": "#38bdf8", "icona": "🛥️" },
-    "escursioni": { "etichetta": "Escursioni e trasporto passeggeri", "colore": "#a78bfa", "icona": "🧭" },
-    "pesca": { "etichetta": "Pesca professionale", "colore": "#fb923c", "icona": "🐟" },
-    "servizi": { "etichetta": "Servizi portuali e istituzioni", "colore": "#f43f5e", "icona": "🛟" },
-    "ristorazione": { "etichetta": "Ristorazione e bar", "colore": "#fbbf24", "icona": "🍽️" }
+    "ormeggio": { "etichetta": "Ormeggi e circoli nautici" },
+    "nautica": { "etichetta": "Nautica, cantieri e noleggio" },
+    "escursioni": { "etichetta": "Escursioni e trasporto passeggeri" },
+    "pesca": { "etichetta": "Pesca professionale" },
+    "servizi": { "etichetta": "Servizi portuali e istituzioni" },
+    "ristorazione": { "etichetta": "Ristorazione e bar" }
   },
   "aziende": [
     {

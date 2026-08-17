@@ -7,67 +7,66 @@
   <meta name="description" content="Il Porto Turistico di Numana in mappa satellitare e in 3D: le aziende e gli operatori del porto, con il percorso a piedi per raggiungerli.">
   <link rel="stylesheet" href="vendor/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='7' fill='none' stroke='%2331596b' stroke-width='3'/></svg>">
 </head>
 <body>
 
   <div id="caricamento" class="caricamento">
-    <div class="caricamento-ancora">⚓</div>
     <h1>Porto di Numana</h1>
-    <p>Carico la geometria del porto e la rete pedonale…</p>
+    <p>Caricamento della geometria del porto…</p>
   </div>
 
   <header class="intestazione">
     <div class="titolo">
-      <span class="logo" aria-hidden="true">⚓</span>
-      <div>
-        <h1>Porto di Numana</h1>
-        <p>Riviera del Conero — mappa satellitare, ricostruzione 3D e percorsi a piedi</p>
-      </div>
+      <h1>Porto di Numana</h1>
+      <p>Riviera del Conero</p>
     </div>
 
-    <nav class="tab-barra" aria-label="Viste">
-      <button class="tab tab-attivo" data-vista="satellite">🛰️ Satellite</button>
-      <button class="tab" data-vista="3d">🧊 Porto 3D</button>
-      <button class="tab" data-vista="info">📄 Scheda &amp; fonti</button>
+    <nav class="nav-viste" aria-label="Viste">
+      <button class="tab tab-attivo" data-vista="satellite">Satellite</button>
+      <button class="tab" data-vista="3d">Modello 3D</button>
+      <button class="tab" data-vista="info">Scheda</button>
     </nav>
   </header>
 
   <main class="corpo">
 
-    <aside class="pannello-laterale">
-      <div class="ricerca-riga">
-        <input id="ricerca" type="search" placeholder="Cerca un'azienda, un servizio…" aria-label="Cerca attività del porto">
+    <aside class="sidebar">
+
+      <!-- Elenco e dettaglio si alternano nella stessa colonna: la mappa
+           non viene mai coperta da un pannello. -->
+      <div class="sidebar-pagina" id="pagina-elenco">
+        <div class="filtri-blocco">
+          <input id="ricerca" type="search" placeholder="Cerca un'attività o un servizio" aria-label="Cerca">
+          <div class="riga-filtro">
+            <select id="categoria" aria-label="Filtra per categoria"></select>
+            <span id="conteggio" class="etichetta-micro"></span>
+          </div>
+        </div>
+        <div id="elenco" class="elenco"></div>
       </div>
 
-      <div id="filtri" class="filtri" role="group" aria-label="Filtra per categoria"></div>
-
-      <div class="partenza-riga">
-        <button id="btn-posizione" class="bottone bottone-tenue">Parti dalla mia posizione</button>
+      <div class="sidebar-pagina" id="pagina-dettaglio" hidden>
+        <div class="dettaglio-testata">
+          <button class="indietro" id="indietro">← Tutte le attività</button>
+        </div>
+        <div class="dettaglio-corpo" id="dettaglio-corpo" aria-live="polite"></div>
       </div>
 
-      <p id="conteggio" class="conteggio"></p>
-
-      <div id="elenco" class="elenco"></div>
     </aside>
 
     <section class="area-viste">
 
       <div class="vista vista-attiva" data-vista="satellite">
         <div id="mappa" class="tela"></div>
-        <div class="controlli-fluttuanti">
-          <button data-sfondo="satellite" class="attivo">Satellite</button>
-          <button data-sfondo="mappa">Mappa</button>
-        </div>
-        <p class="didascalia">Immagine satellitare attuale del porto. Sopra sono tracciati la diga foranea, le scogliere e i pontili così come sono mappati su OpenStreetMap.</p>
+        <button class="comando-vista" id="cambia-sfondo">Mappa</button>
+        <p class="didascalia">Immagine satellitare attuale. Sopra sono tracciati diga foranea, scogliere e pontili come mappati su OpenStreetMap.</p>
       </div>
 
       <div class="vista" data-vista="3d">
         <div id="scena" class="tela"></div>
-        <div class="controlli-fluttuanti">
-          <button id="btn-panoramica">Vista panoramica</button>
-        </div>
-        <p class="didascalia">Trascina per ruotare, rotella per lo zoom, tasto destro per spostarti. I volumi sono estrusi dalla geometria reale OpenStreetMap del porto.</p>
+        <button class="comando-vista" id="btn-panoramica">Vista d'insieme</button>
+        <p class="didascalia">Trascina per ruotare, rotella per lo zoom. I volumi sono estrusi dalla geometria reale del porto.</p>
       </div>
 
       <div class="vista vista-info" data-vista="info">
@@ -75,8 +74,6 @@
       </div>
 
     </section>
-
-    <aside id="dettaglio" class="dettaglio" aria-live="polite"></aside>
 
   </main>
 

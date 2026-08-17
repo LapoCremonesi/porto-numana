@@ -1,22 +1,23 @@
 /**
  * Porto di Numana — logica dell'interfaccia.
  *
- * Tiene insieme i tre pezzi: elenco/ricerca delle aziende, mappa satellitare
- * Leaflet e ricostruzione 3D three.js, con le animazioni di anime.js.
+ * Tiene insieme elenco/ricerca delle attività, mappa satellitare Leaflet e
+ * ricostruzione 3D three.js. Le animazioni (anime.js) sono deliberatamente
+ * sobrie: servono a rendere leggibile un cambio di stato, non a decorare.
  */
 import anime from '../vendor/anime.es.js';
 import { MappaPorto } from './mappa.js';
 import { ScenaPorto } from './scena3d.js';
-import { formattaDistanza } from './geo.js';
 
 const stato = {
   porto: null,
   geo: null,
   catalogo: null,
-  categorieAttive: new Set(),
+  categoria: 'tutte',
   ricerca: '',
   selezionata: null,
-  partenza: null, // [lat, lon] scelta dall'utente, altrimenti l'ingresso del porto
+  partenza: null, // [lat, lon]: l'ingresso del porto finché l'utente non sceglie altro
+  daGeolocalizzazione: false,
   vista: 'satellite',
 };
 
@@ -25,6 +26,9 @@ let scena;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
+
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 // --------------------------------------------------------------- caricamento
 
@@ -37,7 +41,6 @@ async function carica() {
   stato.porto = porto.scheda;
   stato.geo = porto.geo;
   stato.catalogo = catalogo;
-  stato.categorieAttive = new Set(Object.keys(catalogo.categorie));
   stato.partenza = [porto.scheda.ingressoTerra.lat, porto.scheda.ingressoTerra.lon];
 }
 
@@ -46,7 +49,7 @@ async function carica() {
 function aziendeFiltrate() {
   const q = stato.ricerca.trim().toLowerCase();
   return stato.catalogo.aziende.filter((a) => {
-    if (!stato.categorieAttive.has(a.categoria)) return false;
+    if (stato.categoria !== 'tutte' && a.categoria !== stato.categoria) return false;
     if (!q) return true;
     return [a.nome, a.descrizione, a.settore, a.indirizzo, ...(a.dettagli ?? [])]
       .filter(Boolean)
@@ -56,65 +59,51 @@ function aziendeFiltrate() {
   });
 }
 
-function applicaFiltri({ anima = true } = {}) {
+function applicaFiltri() {
   const visibili = aziendeFiltrate();
   const ids = new Set(visibili.map((a) => a.id));
 
   mappa.filtra(ids);
   scena.filtra(ids);
-  renderElenco(visibili, { anima });
+  renderElenco(visibili);
 
+  const totale = stato.catalogo.aziende.length;
   $('#conteggio').textContent =
-    visibili.length === stato.catalogo.aziende.length
-      ? `${visibili.length} attività`
-      : `${visibili.length} di ${stato.catalogo.aziende.length} attività`;
+    visibili.length === totale ? `${totale} attività` : `${visibili.length} / ${totale}`;
 }
 
 // ------------------------------------------------------------------- elenco
 
-function renderElenco(aziende, { anima: conAnimazione = true } = {}) {
+function renderElenco(aziende) {
   const contenitore = $('#elenco');
-  contenitore.innerHTML = '';
 
   if (!aziende.length) {
-    contenitore.innerHTML =
-      '<p class="vuoto">Nessuna attività corrisponde ai filtri impostati.</p>';
+    contenitore.innerHTML = '<p class="vuoto">Nessuna attività corrisponde alla ricerca.</p>';
     return;
   }
 
-  const cat = stato.catalogo.categorie;
-  for (const a of aziende) {
-    const c = cat[a.categoria];
-    const voce = document.createElement('article');
-    voce.className = 'scheda-azienda';
-    voce.dataset.id = a.id;
-    voce.style.setProperty('--tinta', c.colore);
-    voce.innerHTML = `
-      <div class="scheda-icona" aria-hidden="true">${c.icona}</div>
-      <div class="scheda-corpo">
-        <h3>${a.nome}</h3>
-        <p class="scheda-settore">${a.settore ?? c.etichetta}</p>
-      </div>
-      <span class="scheda-freccia" aria-hidden="true">›</span>
-    `;
-    voce.addEventListener('click', () => seleziona(a.id));
-    contenitore.appendChild(voce);
-  }
+  contenitore.innerHTML = aziende
+    .map(
+      (a) => `
+      <button class="voce" data-id="${a.id}">
+        <h3>${escapeHtml(a.nome)}</h3>
+        <p>${escapeHtml(a.settore ?? stato.catalogo.categorie[a.categoria].etichetta)}</p>
+      </button>`
+    )
+    .join('');
 
-  if (conAnimazione) {
-    anime({
-      targets: '.scheda-azienda',
-      opacity: [0, 1],
-      translateX: [-14, 0],
-      delay: anime.stagger(26),
-      duration: 420,
-      easing: 'easeOutQuad',
-    });
+  for (const el of contenitore.querySelectorAll('.voce')) {
+    el.addEventListener('click', () => seleziona(el.dataset.id));
   }
 }
 
 // ---------------------------------------------------------------- selezione
 
+/**
+ * Selezionare un'attività è l'unica azione dell'interfaccia: apre la scheda,
+ * la inquadra nella vista corrente e calcola subito il percorso a piedi —
+ * che è la domanda per cui esiste il sito, non un passaggio da richiedere.
+ */
 function seleziona(id) {
   const a = stato.catalogo.aziende.find((x) => x.id === id);
   if (!a) return;
@@ -123,202 +112,194 @@ function seleziona(id) {
   mappa.evidenzia(id);
   scena.evidenzia(id);
 
-  $$('.scheda-azienda').forEach((el) =>
-    el.classList.toggle('scheda-attiva', el.dataset.id === id)
-  );
-
-  if (stato.vista === 'satellite') mappa.vaiA(a.lat, a.lon);
-  else scena.inquadra(a.lat, a.lon);
-
   mostraDettaglio(a);
+
+  if (stato.vista === '3d') scena.inquadra(a.lat, a.lon);
+  else if (stato.vista === 'info') cambiaVista('satellite');
+
+  calcolaPercorso(a);
 }
 
 function mostraDettaglio(a) {
-  const c = stato.catalogo.categorie[a.categoria];
-  const pannello = $('#dettaglio');
+  const categoria = stato.catalogo.categorie[a.categoria];
+  const corpo = $('#dettaglio-corpo');
 
-  const riga = (etichetta, valore) =>
-    valore ? `<div class="riga"><dt>${etichetta}</dt><dd>${valore}</dd></div>` : '';
+  const riga = (chiave, valore) =>
+    valore ? `<div class="dato-riga"><dt>${chiave}</dt><dd>${valore}</dd></div>` : '';
+
+  const link = (href, testo) =>
+    `<a href="${href}" target="_blank" rel="noopener">${escapeHtml(testo)}</a>`;
 
   const precisione =
     a.precisione === 'osm'
-      ? '<span class="badge badge-ok" title="Coordinate rilevate su OpenStreetMap">Posizione da OSM</span>'
-      : '<span class="badge badge-stima" title="Punto collocato sulla banchina indicata dall\'indirizzo pubblicato: margine di alcune decine di metri">Posizione stimata</span>';
+      ? 'Coordinate rilevate su OpenStreetMap.'
+      : 'Posizione stimata sulla banchina indicata dall\'indirizzo pubblicato: margine di alcune decine di metri.';
 
-  pannello.innerHTML = `
-    <button class="chiudi" id="chiudi-dettaglio" aria-label="Chiudi scheda">×</button>
-    <header class="dettaglio-testa" style="--tinta:${c.colore}">
-      <span class="dettaglio-icona">${c.icona}</span>
-      <div>
-        <p class="dettaglio-categoria">${c.etichetta}</p>
-        <h2>${a.nome}</h2>
-      </div>
-    </header>
-
-    <p class="dettaglio-descrizione">${a.descrizione}</p>
+  corpo.innerHTML = `
+    <p class="etichetta-micro">${escapeHtml(categoria.etichetta)}</p>
+    <h2>${escapeHtml(a.nome)}</h2>
+    <p class="dettaglio-descrizione">${escapeHtml(a.descrizione)}</p>
 
     ${
       a.dettagli?.length
-        ? `<ul class="tag-lista">${a.dettagli.map((d) => `<li>${d}</li>`).join('')}</ul>`
+        ? `<ul class="elenco-semplice">${a.dettagli
+            .map((d) => `<li>${escapeHtml(d)}</li>`)
+            .join('')}</ul>`
         : ''
     }
 
-    <dl class="dettaglio-righe">
-      ${riga('Dove', a.settore)}
-      ${riga('Indirizzo', a.indirizzo)}
-      ${riga('Telefono', a.telefono ? `<a href="tel:${a.telefono.replace(/\s/g, '')}">${a.telefono}</a>` : '')}
-      ${riga('Cellulare', a.cellulare ? `<a href="tel:${a.cellulare.replace(/\s/g, '')}">${a.cellulare}</a>` : '')}
-      ${riga('Email', a.email ? `<a href="mailto:${a.email}">${a.email}</a>` : '')}
-      ${riga('Orari', a.orari)}
-      ${riga('Sito', a.sito ? `<a href="${a.sito}" target="_blank" rel="noopener">${new URL(a.sito).hostname}</a>` : '')}
-      ${riga('Coordinate', `${a.lat.toFixed(5)}, ${a.lon.toFixed(5)} ${precisione}`)}
+    <dl class="dati">
+      ${riga('Dove', a.settore ? escapeHtml(a.settore) : '')}
+      ${riga('Indirizzo', a.indirizzo ? escapeHtml(a.indirizzo) : '')}
+      ${riga('Telefono', a.telefono ? link(`tel:${a.telefono.replace(/\s/g, '')}`, a.telefono) : '')}
+      ${riga('Cellulare', a.cellulare ? link(`tel:${a.cellulare.replace(/\s/g, '')}`, a.cellulare) : '')}
+      ${riga('Email', a.email ? link(`mailto:${a.email}`, a.email) : '')}
+      ${riga('Orari', a.orari ? escapeHtml(a.orari) : '')}
+      ${riga('Sito', a.sito ? link(a.sito, new URL(a.sito).hostname.replace(/^www\./, '')) : '')}
+      ${riga(
+        'Posizione',
+        `${a.lat.toFixed(5)}, ${a.lon.toFixed(5)}<span class="nota-precisione">${precisione}</span>`
+      )}
     </dl>
 
-    <div class="dettaglio-azioni">
-      <button class="bottone bottone-primario" id="btn-percorso">Mostrami il percorso</button>
-      <button class="bottone" id="btn-3d">Vedi in 3D</button>
-    </div>
-
-    <div id="risultato-percorso" class="risultato-percorso"></div>
+    <section class="percorso">
+      <p class="etichetta-micro">Percorso a piedi</p>
+      <div id="esito-percorso"></div>
+    </section>
   `;
 
-  pannello.classList.add('aperto');
-  anime({
-    targets: pannello,
-    translateY: [18, 0],
-    opacity: [0, 1],
-    duration: 380,
-    easing: 'easeOutCubic',
-  });
-  anime({
-    targets: pannello.querySelectorAll('.tag-lista li'),
-    opacity: [0, 1],
-    scale: [0.9, 1],
-    delay: anime.stagger(40, { start: 120 }),
-    duration: 300,
-    easing: 'easeOutBack',
-  });
+  $('#pagina-elenco').hidden = true;
+  $('#pagina-dettaglio').hidden = false;
 
-  $('#chiudi-dettaglio').addEventListener('click', chiudiDettaglio);
-  $('#btn-percorso').addEventListener('click', () => calcolaPercorso(a));
-  $('#btn-3d').addEventListener('click', () => {
-    cambiaVista('3d');
-    scena.inquadra(a.lat, a.lon);
+  anime({
+    targets: corpo,
+    opacity: [0, 1],
+    translateY: [6, 0],
+    duration: 260,
+    easing: 'easeOutQuad',
   });
 }
 
-function chiudiDettaglio() {
-  const pannello = $('#dettaglio');
-  anime({
-    targets: pannello,
-    translateY: [0, 18],
-    opacity: [1, 0],
-    duration: 240,
-    easing: 'easeInQuad',
-    complete: () => {
-      pannello.classList.remove('aperto');
-      pannello.innerHTML = '';
-    },
-  });
+function tornaAllElenco() {
+  $('#pagina-dettaglio').hidden = true;
+  $('#pagina-elenco').hidden = false;
+
   stato.selezionata = null;
   mappa.evidenzia(null);
   scena.evidenzia(null);
   mappa.pulisciPercorso();
   scena.pulisciPercorso();
-  $$('.scheda-azienda').forEach((el) => el.classList.remove('scheda-attiva'));
+
+  anime({
+    targets: '#pagina-elenco',
+    opacity: [0, 1],
+    duration: 200,
+    easing: 'easeOutQuad',
+  });
 }
 
 // ---------------------------------------------------------------- percorso
 
 async function calcolaPercorso(a) {
-  const box = $('#risultato-percorso');
-  box.innerHTML = '<p class="caricamento">Calcolo del percorso a piedi…</p>';
+  const box = $('#esito-percorso');
+  if (!box) return;
+  box.innerHTML = '<p class="attesa">Calcolo in corso…</p>';
 
   const [daLat, daLon] = stato.partenza;
   const url = `/api/percorso?a=${encodeURIComponent(a.id)}&daLat=${daLat}&daLon=${daLon}`;
 
+  let dati;
   try {
     const res = await fetch(url);
-    const dati = await res.json();
-
+    dati = await res.json();
     if (!res.ok) {
-      box.innerHTML = `<p class="errore">${dati.errore}${
-        dati.dettaglio ? `<br><small>${dati.dettaglio}</small>` : ''
-      }</p>`;
+      box.innerHTML = `<p class="errore">${escapeHtml(dati.errore)}</p>${bottonePartenza()}`;
+      collegaBottonePartenza();
       return;
     }
-
-    mappa.disegnaPercorso(dati.punti);
-    scena.disegnaPercorso(dati.punti);
-
-    const vie = dati.vie.length
-      ? `<p class="percorso-vie"><strong>Lungo:</strong> ${dati.vie.slice(0, 6).join(' → ')}</p>`
-      : '';
-
-    box.innerHTML = `
-      <div class="percorso-riepilogo">
-        <div class="percorso-cifra"><span data-conta="${dati.metri}">0</span><small>metri</small></div>
-        <div class="percorso-cifra"><span data-conta="${dati.minuti}">0</span><small>min a piedi</small></div>
-      </div>
-      <p class="percorso-da">Da: <strong>${nomePartenza()}</strong></p>
-      ${vie}
-      <p class="percorso-nota">Percorso calcolato sulla rete pedonale OpenStreetMap con algoritmo di Dijkstra. Gli ultimi ${
-        dati.scostamentoArrivo
-      } m fino all'ingresso non sono su strada mappata.</p>
-    `;
-
-    // Contatori animati: leggono il valore finale da data-conta.
-    anime({
-      targets: box.querySelectorAll('[data-conta]'),
-      innerHTML: (el) => [0, Number(el.dataset.conta)],
-      round: 1,
-      duration: 900,
-      easing: 'easeOutExpo',
-    });
-    anime({
-      targets: box.querySelector('.percorso-riepilogo'),
-      scale: [0.94, 1],
-      opacity: [0, 1],
-      duration: 420,
-      easing: 'easeOutCubic',
-    });
   } catch (err) {
-    box.innerHTML = `<p class="errore">Errore nel calcolo del percorso: ${err.message}</p>`;
+    box.innerHTML = `<p class="errore">Percorso non disponibile: ${escapeHtml(err.message)}</p>`;
+    return;
   }
+
+  mappa.disegnaPercorso(dati.punti);
+  scena.disegnaPercorso(dati.punti);
+
+  const vie = dati.vie.length
+    ? `<p class="percorso-testo">Lungo <strong>${dati.vie.slice(0, 4).map(escapeHtml).join(', ')}</strong>.</p>`
+    : '';
+
+  box.innerHTML = `
+    <div class="percorso-cifre">
+      <span class="percorso-cifra"><b data-conta="${dati.metri}">0</b><span>m</span></span>
+      <span class="percorso-cifra"><b data-conta="${dati.minuti}">0</b><span>min</span></span>
+    </div>
+    <p class="percorso-testo">Da <strong>${escapeHtml(nomePartenza())}</strong>.</p>
+    ${vie}
+    <p class="percorso-testo">Calcolato sulla rete pedonale OpenStreetMap. Gli ultimi ${dati.scostamentoArrivo} m fino all'ingresso non sono su strada mappata.</p>
+    ${bottonePartenza()}
+  `;
+
+  anime({
+    targets: box.querySelectorAll('[data-conta]'),
+    innerHTML: (el) => [0, Number(el.dataset.conta)],
+    round: 1,
+    duration: 700,
+    easing: 'easeOutExpo',
+  });
+
+  collegaBottonePartenza();
+}
+
+function bottonePartenza() {
+  return stato.daGeolocalizzazione
+    ? '<button class="link-azione" id="btn-partenza">Riparti dall\'ingresso del porto</button>'
+    : '<button class="link-azione" id="btn-partenza">Calcola dalla mia posizione</button>';
 }
 
 function nomePartenza() {
-  const ing = stato.porto.ingressoTerra;
-  if (stato.partenza[0] === ing.lat && stato.partenza[1] === ing.lon) {
-    return 'Ingresso del porto (Piazzale S. Massaccesi)';
-  }
-  return `posizione scelta (${stato.partenza[0].toFixed(4)}, ${stato.partenza[1].toFixed(4)})`;
+  return stato.daGeolocalizzazione
+    ? 'la tua posizione'
+    : "l'ingresso del porto, Piazzale S. Massaccesi";
 }
 
-function usaPosizione() {
-  const btn = $('#btn-posizione');
-  if (!navigator.geolocation) {
-    btn.textContent = 'Geolocalizzazione non disponibile';
-    return;
-  }
-  btn.disabled = true;
-  btn.textContent = 'Rilevamento in corso…';
+function collegaBottonePartenza() {
+  const btn = $('#btn-partenza');
+  if (!btn) return;
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      stato.partenza = [pos.coords.latitude, pos.coords.longitude];
-      btn.disabled = false;
-      btn.textContent = 'Partenza: la mia posizione';
-      btn.classList.add('attivo');
+  btn.addEventListener('click', () => {
+    if (stato.daGeolocalizzazione) {
+      stato.daGeolocalizzazione = false;
+      stato.partenza = [stato.porto.ingressoTerra.lat, stato.porto.ingressoTerra.lon];
       if (stato.selezionata) calcolaPercorso(stato.selezionata);
-    },
-    () => {
-      btn.disabled = false;
-      btn.textContent = 'Posizione non concessa — uso l\'ingresso del porto';
-      setTimeout(() => (btn.textContent = 'Parti dalla mia posizione'), 3200);
-    },
-    { enableHighAccuracy: true, timeout: 8000 }
-  );
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      btn.disabled = true;
+      btn.textContent = 'Geolocalizzazione non disponibile';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Rilevamento…';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        stato.partenza = [pos.coords.latitude, pos.coords.longitude];
+        stato.daGeolocalizzazione = true;
+        if (stato.selezionata) calcolaPercorso(stato.selezionata);
+      },
+      () => {
+        btn.disabled = false;
+        btn.textContent = 'Posizione non concessa';
+        setTimeout(() => {
+          if ($('#btn-partenza') === btn) btn.textContent = 'Calcola dalla mia posizione';
+        }, 3000);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
 }
 
 // -------------------------------------------------------------------- viste
@@ -331,13 +312,15 @@ function cambiaVista(vista) {
   if (vista === '3d') {
     scena.avvia();
     scena.ridimensiona();
+    if (stato.selezionata) scena.inquadra(stato.selezionata.lat, stato.selezionata.lon);
   } else {
     scena.ferma();
   }
-  if (vista === 'satellite') mappa.ridimensiona();
 
-  // La scheda tecnica è a tutta larghezza: il pannello di dettaglio la coprirebbe.
-  if (vista === 'info' && stato.selezionata) chiudiDettaglio();
+  if (vista === 'satellite') {
+    mappa.ridimensiona();
+    if (stato.selezionata) mappa.vaiA(stato.selezionata.lat, stato.selezionata.lon);
+  }
 }
 
 // --------------------------------------------------------------------- info
@@ -346,63 +329,79 @@ function renderInfo() {
   const s = stato.porto.scheda;
   const g = stato.geo;
 
+  const numero = (valore, unita, chiave) =>
+    `<div class="numero"><b>${valore}${unita ? `<i> ${unita}</i>` : ''}</b><span class="etichetta-micro">${chiave}</span></div>`;
+
+  const riga = (k, v) => `<div class="dato-riga"><dt>${k}</dt><dd>${v}</dd></div>`;
+
   $('#scheda-porto').innerHTML = `
-    <div class="dati-griglia">
-      ${[
-        ['Posti barca', s.postiBarca, ''],
-        ['Lunghezza max', s.lunghezzaMax, 'm'],
-        ['Pescaggio', `${s.pescaggioMin}–${s.pescaggioMax}`, 'm'],
-        ['Fondale', s.fondale, ''],
-      ]
-        .map(
-          ([k, v, u]) =>
-            `<div class="dato"><span class="dato-valore">${v}<small>${u}</small></span><span class="dato-chiave">${k}</span></div>`
-        )
-        .join('')}
+    <h2>Scheda del porto</h2>
+
+    <div class="numeri">
+      ${numero(s.postiBarca, '', 'Posti barca')}
+      ${numero(s.lunghezzaMax, 'm', 'Lunghezza max')}
+      ${numero(`${s.pescaggioMin}–${s.pescaggioMax}`, 'm', 'Pescaggio')}
+      ${numero(s.fondale, '', 'Fondale')}
     </div>
-    <dl class="dettaglio-righe">
-      <div class="riga"><dt>Classificazione</dt><dd>${s.classificazione}</dd></div>
-      <div class="riga"><dt>Coordinate</dt><dd>${s.coordinate}</dd></div>
-      <div class="riga"><dt>Accesso</dt><dd>${s.accesso}</dd></div>
-      <div class="riga"><dt>Venti</dt><dd>${s.venti}</dd></div>
-      <div class="riga"><dt>Stagione</dt><dd>${s.stagione}</dd></div>
+
+    <dl class="tabella">
+      ${riga('Classificazione', s.classificazione)}
+      ${riga('Coordinate', s.coordinate)}
+      ${riga('Accesso', s.accesso)}
+      ${riga('Venti', s.venti)}
+      ${riga('Stagione', s.stagione)}
     </dl>
 
     <h3>Come è costruito il modello 3D</h3>
-    <p class="testo">
-      La scena three.js non è un disegno a mano libera: ogni volume è generato
-      dalla geometria reale di OpenStreetMap ed estruso in altezza. Da questa
-      area sono stati letti
-      <strong>${g.moli.length} moli</strong>,
+    <p>
+      La scena non è disegnata a mano: ogni volume nasce dalla geometria reale di
+      OpenStreetMap, proiettata in metri ed estrusa in altezza. Da quest'area sono
+      stati letti <strong>${g.moli.length} moli</strong>,
       <strong>${g.scogliere.length} scogliere frangiflutti</strong>,
       <strong>${g.pontili.length} pontili</strong>,
       <strong>${g.costa.length} tratti di linea di costa</strong> e
       <strong>${g.edifici.length} edifici</strong>.
-      Le <strong>altezze</strong> degli edifici non taggate su OSM sono stimate
-      dall'impronta a terra, e le barche agli ormeggi sono rappresentative:
-      il porto dichiara circa ${s.postiBarca} posti, non ne è mappato il singolo natante.
+    </p>
+    <p>
+      Sono invece <strong>stimate</strong> le altezze degli edifici non taggate su OSM,
+      ricavate dall'impronta a terra, e le quote di banchina e pontili, scelte per la
+      leggibilità della scena. Le barche agli ormeggi sono rappresentative: il porto
+      dichiara circa ${s.postiBarca} posti, ma non è mappato il singolo natante.
     </p>
 
     <h3>Come viene calcolato il percorso</h3>
-    <p class="testo">
-      La rete pedonale OSM (${g.strade.length} archi caricati, pontili e moli inclusi)
-      viene trasformata in un grafo pesato: la lunghezza di ogni segmento è
-      moltiplicata per un costo che dipende dal tipo di percorso — una scalinata
-      "costa" più di un lungomare. Il cammino minimo è calcolato con l'algoritmo
-      di Dijkstra lato server.
+    <p>
+      La rete pedonale OpenStreetMap — ${g.strade.length} archi, pontili e moli inclusi
+      perché si percorrono a piedi — diventa un grafo pesato: la lunghezza di ogni
+      segmento è moltiplicata per un costo che dipende dal tipo di percorso, così una
+      scalinata "costa" più di un lungomare. Il cammino minimo è calcolato con
+      l'algoritmo di Dijkstra.
+    </p>
+
+    <h3>Posizione delle attività</h3>
+    <p>
+      Non tutte le attività sono mappate su OpenStreetMap. Dove lo sono, le coordinate
+      sono rilevate; altrimenti il punto è collocato sulla banchina indicata
+      dall'indirizzo pubblicato, con un margine di alcune decine di metri. La scheda di
+      ogni attività dichiara quale dei due casi si applica.
+    </p>
+    <p class="piccolo">
+      Contatti, orari e prezzi cambiano: vanno verificati sul sito dell'operatore.
+      Ultimo aggiornamento dei dati: ${stato.catalogo.aggiornato}.
     </p>
 
     <h3>Fonti</h3>
     <ul class="fonti">
       ${stato.catalogo.fonti
-        .map(
-          (f) =>
-            `<li><a href="${f.url}" target="_blank" rel="noopener">${f.titolo}</a></li>`
-        )
+        .map((f) => `<li><a href="${f.url}" target="_blank" rel="noopener">${escapeHtml(f.titolo)}</a></li>`)
         .join('')}
     </ul>
-    <p class="testo piccolo">${stato.catalogo.nota}</p>
-    <p class="testo piccolo">Dati geografici © contributori OpenStreetMap, licenza ODbL. Immagini satellitari © Esri, Maxar, Earthstar Geographics. Ultimo aggiornamento del dataset aziende: ${stato.catalogo.aggiornato}.</p>
+
+    <h3>Licenze</h3>
+    <p class="piccolo">
+      Dati geografici © contributori OpenStreetMap, licenza ODbL.
+      Immagini satellitari © Esri, Maxar, Earthstar Geographics.
+    </p>
   `;
 }
 
@@ -411,81 +410,58 @@ function renderInfo() {
 function collegaControlli() {
   $('#ricerca').addEventListener('input', (e) => {
     stato.ricerca = e.target.value;
-    applicaFiltri({ anima: false });
+    applicaFiltri();
   });
 
-  const filtri = $('#filtri');
-  for (const [chiave, c] of Object.entries(stato.catalogo.categorie)) {
-    const b = document.createElement('button');
-    b.className = 'filtro filtro-attivo';
-    b.style.setProperty('--tinta', c.colore);
-    b.dataset.categoria = chiave;
-    b.innerHTML = `<span>${c.icona}</span> ${c.etichetta}`;
-    b.addEventListener('click', () => {
-      if (stato.categorieAttive.has(chiave)) stato.categorieAttive.delete(chiave);
-      else stato.categorieAttive.add(chiave);
-      b.classList.toggle('filtro-attivo');
-      anime({ targets: b, scale: [0.92, 1], duration: 260, easing: 'easeOutBack' });
-      applicaFiltri({ anima: false });
-    });
-    filtri.appendChild(b);
-  }
+  const select = $('#categoria');
+  select.innerHTML =
+    '<option value="tutte">Tutte le categorie</option>' +
+    Object.entries(stato.catalogo.categorie)
+      .map(([k, c]) => `<option value="${k}">${escapeHtml(c.etichetta)}</option>`)
+      .join('');
+  select.addEventListener('change', (e) => {
+    stato.categoria = e.target.value;
+    applicaFiltri();
+  });
 
+  $('#indietro').addEventListener('click', tornaAllElenco);
   $$('.tab').forEach((t) => t.addEventListener('click', () => cambiaVista(t.dataset.vista)));
-
-  $$('[data-sfondo]').forEach((b) =>
-    b.addEventListener('click', () => {
-      $$('[data-sfondo]').forEach((x) => x.classList.toggle('attivo', x === b));
-      mappa.cambiaSfondo(b.dataset.sfondo);
-    })
-  );
-
-  $('#btn-posizione').addEventListener('click', usaPosizione);
   $('#btn-panoramica').addEventListener('click', () => scena.vistaGenerale());
 
+  // Un solo pulsante che alterna i due sfondi, invece di due sempre presenti.
+  const btnSfondo = $('#cambia-sfondo');
+  btnSfondo.addEventListener('click', () => {
+    const nuovo = mappa.sfondoCorrente === 'satellite' ? 'mappa' : 'satellite';
+    mappa.cambiaSfondo(nuovo);
+    btnSfondo.textContent = nuovo === 'satellite' ? 'Mappa' : 'Satellite';
+  });
+
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && stato.selezionata) chiudiDettaglio();
+    if (e.key === 'Escape' && stato.selezionata) tornaAllElenco();
   });
 }
 
 async function avvia() {
   await carica();
 
-  mappa = new MappaPorto('mappa', {
-    centro: stato.porto.centro,
-    alSelezionare: seleziona,
-  });
+  mappa = new MappaPorto('mappa', { centro: stato.porto.centro, alSelezionare: seleziona });
   mappa.disegnaGeometria(stato.geo);
   mappa.disegnaAziende(stato.catalogo.aziende, stato.catalogo.categorie);
 
-  scena = new ScenaPorto($('#scena'), {
-    centro: stato.porto.centro,
-    alSelezionare: (id) => {
-      seleziona(id);
-    },
-  });
+  scena = new ScenaPorto($('#scena'), { centro: stato.porto.centro, alSelezionare: seleziona });
   scena.costruisci(stato.geo);
-  scena.creaSegnaposti(stato.catalogo.aziende, stato.catalogo.categorie);
+  scena.creaSegnaposti(stato.catalogo.aziende);
 
   collegaControlli();
   applicaFiltri();
   renderInfo();
 
-  // Il caricamento si chiude solo quando tutto è pronto: niente porto a metà.
   anime({
     targets: '#caricamento',
     opacity: [1, 0],
-    duration: 520,
+    duration: 320,
     easing: 'easeOutQuad',
     complete: () => $('#caricamento').remove(),
-  });
-  anime({
-    targets: ['.intestazione', '.pannello-laterale', '.area-viste'],
-    opacity: [0, 1],
-    translateY: [12, 0],
-    delay: anime.stagger(90),
-    duration: 620,
-    easing: 'easeOutCubic',
   });
 }
 
@@ -493,6 +469,6 @@ avvia().catch((err) => {
   console.error(err);
   const c = document.getElementById('caricamento');
   if (c) {
-    c.innerHTML = `<div class="caricamento-errore"><h2>Impossibile caricare i dati del porto</h2><p>${err.message}</p></div>`;
+    c.innerHTML = `<div class="caricamento-errore"><h2>Impossibile caricare i dati del porto</h2><p>${escapeHtml(err.message)}</p></div>`;
   }
 });

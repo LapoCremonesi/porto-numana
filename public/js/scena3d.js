@@ -19,13 +19,20 @@ const Q = {
   scogliera: 2.6,
 };
 
+/**
+ * Palette del modello: gessi e grigi caldi, come un plastico architettonico.
+ * L'unico colore saturo della scena è l'accento dell'interfaccia, riservato ai
+ * segnaposti e al percorso — così l'occhio va dove serve.
+ */
 const COLORI = {
-  banchina: 0xb9b3a5,
-  moloRoccia: 0x8d8579,
-  pontile: 0xd8cbb4,
-  edificio: 0xe8e0d2,
-  tetto: 0xb4553f,
-  scafo: 0xf5f5f2,
+  banchina: 0xd5d1c9,
+  moloRoccia: 0xb0aca4,
+  pontile: 0xcbc8c1,
+  edificio: 0xf2f0ed,
+  tetto: 0xbfbab2,
+  scafo: 0xfbfbfa,
+  coperta: 0x9a968e,
+  accento: 0x31596b,
 };
 
 export class ScenaPorto {
@@ -63,8 +70,8 @@ export class ScenaPorto {
 
   _initScena() {
     this.scena = new THREE.Scene();
-    this.scena.background = new THREE.Color(0x8fbcd9);
-    this.scena.fog = new THREE.Fog(0x9cc4dd, 700, 2000);
+    this.scena.background = new THREE.Color(0xe9eaea);
+    this.scena.fog = new THREE.Fog(0xe9eaea, 650, 1900);
 
     this.camera = new THREE.PerspectiveCamera(
       50,
@@ -92,9 +99,10 @@ export class ScenaPorto {
   }
 
   _initLuci() {
-    this.scena.add(new THREE.HemisphereLight(0xcfe6f5, 0x6b6455, 1.15));
+    // Luce da studio: ambiente chiaro e neutro, una sola direzionale morbida.
+    this.scena.add(new THREE.HemisphereLight(0xeef0f1, 0x9d9a94, 1.5));
 
-    const sole = new THREE.DirectionalLight(0xfff3dd, 2.1);
+    const sole = new THREE.DirectionalLight(0xfffaf2, 1.5);
     sole.position.set(-260, 380, 180);
     sole.castShadow = true;
     sole.shadow.mapSize.set(2048, 2048);
@@ -204,7 +212,6 @@ export class ScenaPorto {
     this._costruisciPontili(geo);
     this._costruisciEdifici(geo);
     this._costruisciBarche(geo);
-    this._bussola();
   }
 
   _costruisciMare() {
@@ -255,14 +262,16 @@ export class ScenaPorto {
     this.materialeMare = new THREE.ShaderMaterial({
       uniforms: {
         tempo: { value: 0 },
-        coloreProfondo: { value: new THREE.Color(0x156b8d) },
-        coloreBasso: { value: new THREE.Color(0x33a0c0) },
-        coloreCresta: { value: new THREE.Color(0x63c8d8) },
-        cielo: { value: new THREE.Color(0xa8cfe4) },
+        // Acqua desaturata, in tono con l'accento: deve leggersi come acqua
+        // rispetto alla terra chiara, senza diventare una macchia scura.
+        coloreProfondo: { value: new THREE.Color(0x3d6373) },
+        coloreBasso: { value: new THREE.Color(0x5a828f) },
+        coloreCresta: { value: new THREE.Color(0x83a3ab) },
+        cielo: { value: new THREE.Color(0xd3d8d8) },
         dirSole: { value: new THREE.Vector3(-260, 380, 180).normalize() },
-        nebbiaColore: { value: new THREE.Color(0x9cc4dd) },
-        nebbiaVicino: { value: 700 },
-        nebbiaLontano: { value: 2000 },
+        nebbiaColore: { value: new THREE.Color(0xe9eaea) },
+        nebbiaVicino: { value: 650 },
+        nebbiaLontano: { value: 1900 },
       },
       vertexShader: /* glsl */ `
         uniform float tempo;
@@ -313,12 +322,14 @@ export class ScenaPorto {
           // Il grosso della variazione viene dal cielo riflesso: alle incidenze
           // radenti l'acqua fa da specchio, in verticale si vede il fondo.
           vec3 vista = normalize(cameraPosition - vPos);
+          // Riflesso contenuto: spinto oltre, all'orizzonte l'acqua sbianca e
+          // il mare aperto smette di leggersi come acqua.
           float fresnel = pow(1.0 - max(dot(n, vista), 0.0), 4.0);
-          colore = mix(colore, cielo, clamp(fresnel, 0.0, 1.0) * 0.8);
+          colore = mix(colore, cielo, clamp(fresnel, 0.0, 1.0) * 0.5);
 
           vec3 mezzo = normalize(dirSole + vista);
           float spec = pow(max(dot(n, mezzo), 0.0), 160.0);
-          colore += vec3(1.0, 0.96, 0.86) * spec * 1.1;
+          colore += vec3(1.0, 0.99, 0.96) * spec * 0.55;
 
           float diffusa = max(dot(n, dirSole), 0.0);
           colore *= 0.90 + diffusa * 0.16;
@@ -327,6 +338,13 @@ export class ScenaPorto {
           colore = mix(colore, nebbiaColore, nebbia);
 
           gl_FragColor = vec4(colore, 1.0);
+
+          // Le uniform THREE.Color arrivano già in spazio lineare. Senza questi
+          // due chunk il mare salterebbe la catena di output del renderer e
+          // risulterebbe molto più scuro del resto della scena, che passa dai
+          // materiali standard.
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
         }
       `,
     });
@@ -410,8 +428,8 @@ export class ScenaPorto {
         this.gruppoPorto.add(cima);
       }
 
-      this._fanale(punti[punti.length - 1], 0xef4444);
-      this._fanale(punti[0], 0x22c55e);
+      this._fanale(punti[punti.length - 1]);
+      this._fanale(punti[0]);
     }
 
     for (const scogliera of geo.scogliere) {
@@ -425,27 +443,19 @@ export class ScenaPorto {
     }
   }
 
-  /** Fanale rosso/verde di imboccatura. */
-  _fanale(p, colore) {
-    const gruppo = new THREE.Group();
+  /**
+   * Fanale di imboccatura: un segno verticale sulla testata del molo.
+   * Niente rosso/verde lampeggiante — sul plastico sarebbe l'unica cosa che si
+   * guarda, e non è l'informazione che conta qui.
+   */
+  _fanale(p) {
     const palo = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.35, 0.5, 5, 8),
-      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.6 })
+      new THREE.CylinderGeometry(0.3, 0.42, 5, 8),
+      new THREE.MeshStandardMaterial({ color: 0xf4f3f1, roughness: 0.6 })
     );
-    palo.position.y = 2.5;
+    palo.position.set(p.x, Q.molo + 2.5, p.y);
     palo.castShadow = true;
-
-    const luce = new THREE.Mesh(
-      new THREE.SphereGeometry(0.75, 12, 10),
-      new THREE.MeshStandardMaterial({ color: colore, emissive: colore, emissiveIntensity: 1.4 })
-    );
-    luce.position.y = 5.4;
-
-    gruppo.add(palo, luce);
-    gruppo.position.set(p.x, Q.molo, p.y);
-    gruppo.userData.lampeggiante = luce;
-    this.gruppoPorto.add(gruppo);
-    (this._fanali ??= []).push(luce);
+    this.gruppoPorto.add(palo);
   }
 
   /** Pontili galleggianti di ormeggio. */
@@ -515,9 +525,9 @@ export class ScenaPorto {
    * lungo i pontili reali, non la posizione del singolo natante.
    */
   _costruisciBarche(geo) {
-    const scafo = new THREE.MeshStandardMaterial({ color: COLORI.scafo, roughness: 0.45 });
-    const coperta = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.7 });
-    const albero = new THREE.MeshStandardMaterial({ color: 0xd6dee6, roughness: 0.5 });
+    const scafo = new THREE.MeshStandardMaterial({ color: COLORI.scafo, roughness: 0.5 });
+    const coperta = new THREE.MeshStandardMaterial({ color: COLORI.coperta, roughness: 0.75 });
+    const albero = new THREE.MeshStandardMaterial({ color: 0xc9c6c0, roughness: 0.6 });
 
     // Un solo geometria riusata per tutte le barche: molte istanze, poco costo.
     const geoScafo = new THREE.CapsuleGeometry(1.05, 4.2, 4, 10);
@@ -583,81 +593,51 @@ export class ScenaPorto {
     }
   }
 
-  /** Rosa dei venti a terra, per orientarsi. */
-  _bussola() {
-    const materiale = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
-    const punti = [
-      new THREE.Vector3(0, 0.2, -260),
-      new THREE.Vector3(0, 0.2, 260),
-      new THREE.Vector3(0, 0.2, 0),
-      new THREE.Vector3(260, 0.2, 0),
-    ];
-    const geo = new THREE.BufferGeometry().setFromPoints(punti);
-    this.scena.add(new THREE.LineSegments(geo, materiale));
-  }
-
   // -------------------------------------------------------------- segnaposti
 
-  /** Crea i segnaposto 3D delle aziende, con etichetta HTML sovrapposta. */
-  creaSegnaposti(aziende, categorie) {
+  /**
+   * Crea i segnaposto 3D delle aziende, con etichetta HTML sovrapposta.
+   * Tutti dello stesso colore: sul plastico grigio basta l'accento a farli
+   * emergere, e la categoria si legge nella scheda.
+   */
+  creaSegnaposti(aziende) {
     for (const { gruppo, etichetta } of this.segnaposti.values()) {
       this.gruppoPorto.remove(gruppo);
       etichetta.remove();
     }
     this.segnaposti.clear();
 
-    const geoAsta = new THREE.CylinderGeometry(0.35, 0.35, 14, 8);
-    const geoTesta = new THREE.SphereGeometry(2.4, 16, 14);
-    const geoAnello = new THREE.RingGeometry(3.2, 4.4, 28);
+    const geoAsta = new THREE.CylinderGeometry(0.22, 0.22, 13, 6);
+    const geoTesta = new THREE.SphereGeometry(1.7, 16, 12);
+
+    const matAsta = new THREE.MeshStandardMaterial({ color: 0x8e8b85, roughness: 0.7 });
+    const matTesta = new THREE.MeshStandardMaterial({
+      color: COLORI.accento,
+      roughness: 0.45,
+      metalness: 0,
+    });
 
     for (const a of aziende) {
-      const cat = categorie[a.categoria];
-      const tinta = new THREE.Color(cat.colore);
       const { x, z } = this.proiezione.avanti(a.lat, a.lon);
 
       const gruppo = new THREE.Group();
       gruppo.position.set(x, Q.banchina, z);
       gruppo.userData.idAzienda = a.id;
 
-      const asta = new THREE.Mesh(
-        geoAsta,
-        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 })
-      );
-      asta.position.y = 7;
+      const asta = new THREE.Mesh(geoAsta, matAsta);
+      asta.position.y = 6.5;
       gruppo.add(asta);
 
-      const testa = new THREE.Mesh(
-        geoTesta,
-        new THREE.MeshStandardMaterial({
-          color: tinta,
-          emissive: tinta,
-          emissiveIntensity: 0.45,
-          roughness: 0.35,
-        })
-      );
-      testa.position.y = 15;
+      const testa = new THREE.Mesh(geoTesta, matTesta.clone());
+      testa.position.y = 13.6;
       testa.castShadow = true;
       gruppo.add(testa);
-
-      const anello = new THREE.Mesh(
-        geoAnello,
-        new THREE.MeshBasicMaterial({
-          color: tinta,
-          transparent: true,
-          opacity: 0.5,
-          side: THREE.DoubleSide,
-        })
-      );
-      anello.rotation.x = -Math.PI / 2;
-      anello.position.y = 0.35;
-      gruppo.add(anello);
 
       this.gruppoPorto.add(gruppo);
 
       const etichetta = document.createElement('button');
       etichetta.className = 'etichetta-3d';
-      etichetta.style.setProperty('--tinta', cat.colore);
-      etichetta.innerHTML = `<span class="etichetta-icona">${cat.icona}</span><span>${a.nome}</span>`;
+      etichetta.textContent = a.nome;
       etichetta.addEventListener('click', () => this.alSelezionare?.(a.id));
       this.overlay.appendChild(etichetta);
 
@@ -665,8 +645,7 @@ export class ScenaPorto {
         gruppo,
         etichetta,
         testa,
-        anello,
-        posizione: new THREE.Vector3(x, 18, z),
+        posizione: new THREE.Vector3(x, 16, z),
       });
     }
   }
@@ -684,7 +663,7 @@ export class ScenaPorto {
     for (const [k, s] of this.segnaposti) {
       const attivo = k === id;
       s.etichetta.classList.toggle('etichetta-attiva', attivo);
-      s.testa.scale.setScalar(attivo ? 1.6 : 1);
+      s.testa.scale.setScalar(attivo ? 1.45 : 1);
     }
   }
 
@@ -738,12 +717,9 @@ export class ScenaPorto {
     const geo = new THREE.TubeGeometry(curva, Math.max(24, punti3d.length * 3), 1.4, 8, false);
 
     this.materialePercorso = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0ea5e9,
-      emissiveIntensity: 0.7,
-      roughness: 0.3,
-      transparent: true,
-      opacity: 0.95,
+      color: COLORI.accento,
+      roughness: 0.5,
+      metalness: 0,
     });
 
     const tubo = new THREE.Mesh(geo, this.materialePercorso);
@@ -759,9 +735,9 @@ export class ScenaPorto {
     const fantasma = new THREE.Mesh(
       geo,
       new THREE.MeshBasicMaterial({
-        color: 0x7dd3fc,
+        color: COLORI.accento,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.22,
         depthTest: false,
         depthWrite: false,
       })
@@ -769,16 +745,17 @@ export class ScenaPorto {
     fantasma.renderOrder = 999;
     this.gruppoPercorso.add(fantasma);
 
-    const partenza = this._pallino(punti3d[0], 0x22c55e);
-    const arrivo = this._pallino(punti3d[punti3d.length - 1], 0xf43f5e);
+    // Partenza chiara, arrivo nell'accento: stessa convenzione della mappa 2D.
+    const partenza = this._pallino(punti3d[0], 0xf4f3f1);
+    const arrivo = this._pallino(punti3d[punti3d.length - 1], COLORI.accento);
     this.gruppoPercorso.add(partenza, arrivo);
     this._curvaPercorso = curva;
   }
 
   _pallino(pos, colore) {
     const m = new THREE.Mesh(
-      new THREE.SphereGeometry(2.6, 16, 12),
-      new THREE.MeshStandardMaterial({ color: colore, emissive: colore, emissiveIntensity: 0.8 })
+      new THREE.SphereGeometry(2.3, 16, 12),
+      new THREE.MeshStandardMaterial({ color: colore, roughness: 0.5 })
     );
     m.position.copy(pos);
     return m;
@@ -832,21 +809,6 @@ export class ScenaPorto {
       barca.position.y = barca.userData.baseY + Math.sin(t * 1.15 + f) * 0.16;
       barca.rotation.z = Math.sin(t * 0.9 + f) * 0.035;
       barca.rotation.x = Math.cos(t * 1.3 + f) * 0.02;
-    }
-
-    // Fanali di imboccatura: lampeggio lento.
-    for (let i = 0; i < (this._fanali?.length ?? 0); i++) {
-      const l = this._fanali[i];
-      l.material.emissiveIntensity = 0.4 + Math.pow(Math.sin(t * 1.6 + i * 1.7) * 0.5 + 0.5, 3) * 2.2;
-    }
-
-    // Segnaposto attivo: alone pulsante.
-    for (const [id, s] of this.segnaposti) {
-      if (!s.gruppo.visible) continue;
-      const attivo = id === this.idAttivo;
-      const p = attivo ? 1 + Math.sin(t * 3.4) * 0.22 : 1;
-      s.anello.scale.setScalar(p);
-      s.anello.material.opacity = attivo ? 0.35 + Math.sin(t * 3.4) * 0.2 : 0.32;
     }
 
     // Tracciamento progressivo del percorso.
