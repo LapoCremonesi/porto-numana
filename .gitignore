@@ -1,0 +1,6 @@
+node_modules/
+public/vendor/
+npm-debug.log*
+.DS_Store
+.env
+.test-e2e.mjs

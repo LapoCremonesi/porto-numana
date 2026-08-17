@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porto di Numana — mappa interattiva e ricostruzione 3D</title>
+  <meta name="description" content="Il Porto Turistico di Numana in mappa satellitare e in 3D: le aziende e gli operatori del porto, con il percorso a piedi per raggiungerli.">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>">
+</head>
+<body>
+
+  <div id="caricamento" class="caricamento">
+    <div class="caricamento-ancora">⚓</div>
+    <h1>Porto di Numana</h1>
+    <p>Carico la geometria del porto e la rete pedonale…</p>
+  </div>
+
+  <header class="intestazione">
+    <div class="titolo">
+      <span class="logo" aria-hidden="true">⚓</span>
+      <div>
+        <h1>Porto di Numana</h1>
+        <p>Riviera del Conero — mappa satellitare, ricostruzione 3D e percorsi a piedi</p>
+      </div>
+    </div>
+
+    <nav class="tab-barra" aria-label="Viste">
+      <button class="tab tab-attivo" data-vista="satellite">🛰️ Satellite</button>
+      <button class="tab" data-vista="3d">🧊 Porto 3D</button>
+      <button class="tab" data-vista="info">📄 Scheda &amp; fonti</button>
+    </nav>
+  </header>
+
+  <main class="corpo">
+
+    <aside class="pannello-laterale">
+      <div class="ricerca-riga">
+        <input id="ricerca" type="search" placeholder="Cerca un'azienda, un servizio…" aria-label="Cerca attività del porto">
+      </div>
+
+      <div id="filtri" class="filtri" role="group" aria-label="Filtra per categoria"></div>
+
+      <div class="partenza-riga">
+        <button id="btn-posizione" class="bottone bottone-tenue">Parti dalla mia posizione</button>
+      </div>
+
+      <p id="conteggio" class="conteggio"></p>
+
+      <div id="elenco" class="elenco"></div>
+    </aside>
+
+    <section class="area-viste">
+
+      <div class="vista vista-attiva" data-vista="satellite">
+        <div id="mappa" class="tela"></div>
+        <div class="controlli-fluttuanti">
+          <button data-sfondo="satellite" class="attivo">Satellite</button>
+          <button data-sfondo="mappa">Mappa</button>
+        </div>
+        <p class="didascalia">Immagine satellitare attuale del porto. Sopra sono tracciati la diga foranea, le scogliere e i pontili così come sono mappati su OpenStreetMap.</p>
+      </div>
+
+      <div class="vista" data-vista="3d">
+        <div id="scena" class="tela"></div>
+        <div class="controlli-fluttuanti">
+          <button id="btn-panoramica">Vista panoramica</button>
+        </div>
+        <p class="didascalia">Trascina per ruotare, rotella per lo zoom, tasto destro per spostarti. I volumi sono estrusi dalla geometria reale OpenStreetMap del porto.</p>
+      </div>
+
+      <div class="vista vista-info" data-vista="info">
+        <div id="scheda-porto" class="scheda-porto"></div>
+      </div>
+
+    </section>
+
+    <aside id="dettaglio" class="dettaglio" aria-live="polite"></aside>
+
+  </main>
+
+  <script src="vendor/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

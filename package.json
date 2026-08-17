@@ -1,0 +1,33 @@
+{
+  "name": "porto-numana",
+  "version": "1.0.0",
+  "description": "Sito interattivo del Porto di Numana: mappa satellitare, ricostruzione 3D e navigazione a piedi verso le aziende del porto",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build:data": "node scripts/build-data.js",
+    "postinstall": "node scripts/copy-vendor.js"
+  },
+  "keywords": [
+    "numana",
+    "porto",
+    "conero",
+    "three.js",
+    "anime.js",
+    "leaflet",
+    "openstreetmap"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "animejs": "^3.2.2",
+    "compression": "^1.7.4",
+    "express": "^4.19.2",
+    "leaflet": "^1.9.4",
+    "three": "^0.169.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
