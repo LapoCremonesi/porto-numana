@@ -4,3 +4,6 @@ npm-debug.log*
 .DS_Store
 .env
 .test-e2e.mjs
+
+# Canvas di design: rigenerabile dai sorgenti in design/
+porto-di-numana-design.html

@@ -1,0 +1,10 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",      "x": 0,    "y": 0,   "w": 1440, "h": 880, "title": "Satellite — attività e percorso" },
+    { "file": "Elenco.dc.html",    "x": 1520, "y": 0,   "w": 1440, "h": 880, "title": "Satellite — elenco attività" },
+    { "file": "Modello3D.dc.html", "x": 3040, "y": 0,   "w": 1440, "h": 880, "title": "Modello 3D" },
+    { "file": "Scheda.dc.html",    "x": 4560, "y": 0,   "w": 1440, "h": 880, "title": "Scheda tecnica" },
+    { "file": "Sistema.dc.html",   "x": 0,    "y": 980, "w": 1040, "h": 1280, "title": "Sistema visivo" }
+  ],
+  "launch": { "view": "canvas" }
+}

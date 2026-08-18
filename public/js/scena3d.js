@@ -9,6 +9,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { creaProiezione, concatenaCoste } from './geo.js';
+import { creaTexturePorto } from './texture.js';
 
 /** Quote (in metri) usate dalla ricostruzione. */
 const Q = {
@@ -206,6 +207,9 @@ export class ScenaPorto {
    * @param {object} geo dataset di data/porto-geo.json
    */
   costruisci(geo) {
+    // Generate qui e non nel costruttore: servono le capability del renderer.
+    this.texture = creaTexturePorto(this.renderer.capabilities.getMaxAnisotropy());
+
     this._costruisciMare();
     this._costruisciTerra(geo);
     this._costruisciMoli(geo);
@@ -366,6 +370,9 @@ export class ScenaPorto {
       color: COLORI.banchina,
       roughness: 0.95,
       metalness: 0,
+      map: this.texture.cemento.map,
+      bumpMap: this.texture.cemento.bumpMap,
+      bumpScale: 0.5,
     });
 
     const LIMITE_OVEST = -1400; // metri a ovest del centro: bordo interno della scena
@@ -409,6 +416,9 @@ export class ScenaPorto {
       roughness: 1,
       metalness: 0,
       flatShading: true,
+      map: this.texture.roccia.map,
+      bumpMap: this.texture.roccia.bumpMap,
+      bumpScale: 1.4,
     });
 
     for (const molo of geo.moli) {
@@ -464,6 +474,9 @@ export class ScenaPorto {
       color: COLORI.pontile,
       roughness: 0.85,
       metalness: 0,
+      map: this.texture.legno.map,
+      bumpMap: this.texture.legno.bumpMap,
+      bumpScale: 0.25,
     });
 
     this.pontili = [];
@@ -477,6 +490,39 @@ export class ScenaPorto {
       this.gruppoPorto.add(mesh);
       this.pontili.push(punti);
     }
+
+    this._allineaTavolePontili();
+  }
+
+  /**
+   * Le tavole della texture corrono lungo l'asse X del mondo, ma i pontili di
+   * Numana sono tutti orientati in diagonale. Ruotiamo la texture sull'angolo
+   * medio dei pontili, così le tavole risultano di traverso al camminamento
+   * come su un pontile vero, invece di tagliarlo storte.
+   */
+  _allineaTavolePontili() {
+    if (!this.pontili?.length) return;
+
+    // Media circolare su angoli raddoppiati: un pontile e' una direzione, non
+    // un verso — 20 gradi e 200 gradi sono lo stesso allineamento.
+    let sx = 0;
+    let sy = 0;
+    for (const punti of this.pontili) {
+      const a = punti[0];
+      const b = punti[punti.length - 1];
+      const ang = Math.atan2(b.y - a.y, b.x - a.x) * 2;
+      const peso = a.distanceTo(b);
+      sx += Math.cos(ang) * peso;
+      sy += Math.sin(ang) * peso;
+    }
+    if (sx === 0 && sy === 0) return;
+    const medio = Math.atan2(sy, sx) / 2;
+
+    for (const t of [this.texture.legno.map, this.texture.legno.bumpMap]) {
+      t.center.set(0.5, 0.5);
+      t.rotation = medio;
+      t.needsUpdate = true;
+    }
   }
 
   /** Sagome degli edifici OSM, estruse all'altezza dichiarata o stimata. */
@@ -485,11 +531,17 @@ export class ScenaPorto {
       color: COLORI.edificio,
       roughness: 0.9,
       metalness: 0,
+      map: this.texture.intonaco.map,
+      bumpMap: this.texture.intonaco.bumpMap,
+      bumpScale: 0.18,
     });
     const tetti = new THREE.MeshStandardMaterial({
       color: COLORI.tetto,
       roughness: 0.85,
       metalness: 0,
+      map: this.texture.tetto.map,
+      bumpMap: this.texture.tetto.bumpMap,
+      bumpScale: 0.3,
     });
 
     for (const ed of geo.edifici) {

@@ -110,6 +110,23 @@ lunghe, le uniche che la maglia può risolvere), il fragment calcola la **deriva
 per ricavare una normale liscia, così il dettaglio dell'acqua non dipende dalla densità della
 mesh e non compaiono artefatti a scacchiera.
 
+### Texture del modello
+
+Le texture di banchina, moli, edifici e pontili sono **generate a runtime** su
+canvas (`public/js/texture.js`), non caricate da file: il modello funziona senza
+rete e il repository non porta asset binari. Sono rumore di valore ciclico
+sommato su più ottave, quindi si ripetono senza cuciture.
+
+Restano dentro la palette per costruzione: ogni texture modula la luminanza in
+una banda stretta attorno al bianco — il tono resta quello del `color` del
+materiale — e il rilievo lo fa una `bumpMap` che condivide lo stesso canvas.
+Servono a dare materia (cemento, roccia, intonaco, legno), non colore.
+
+Le UV di `ExtrudeGeometry` sono in metri, quindi `repeat` è la scala reale:
+`1/6` significa che la texture copre sei metri di banchina. Le tavole dei
+pontili sono ruotate sull'angolo medio dei pontili reali, così risultano di
+traverso al camminamento invece di tagliarlo storte.
+
 **Cosa è reale e cosa è stimato**, per non confondere le due cose:
 
 | Elemento | Origine |

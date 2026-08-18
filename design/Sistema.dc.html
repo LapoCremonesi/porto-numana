@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.5; color: #1a1a19; }
+    a { color: #31596b; text-decoration: none; }
+    a:hover { color: #24434f; }
+  </style>
+</helmet>
+
+<div style="width: 1040px; height: 1280px; padding: 48px 56px; background: #ffffff; overflow: hidden;">
+
+  <div style="font-size: 19px; font-weight: 600; letter-spacing: -0.01em;">Sistema visivo</div>
+  <div style="margin-top: 6px; font-size: 13.5px; line-height: 1.6; color: #57554f; max-width: 620px;">Una sola palette per interfaccia e modello 3D: grigi caldi neutri più un unico accento. Nessun gradiente, nessuna ombra diffusa — la gerarchia si regge su spaziatura, peso tipografico e filetti da 1px.</div>
+
+  <div style="margin: 36px 0 12px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8880;">Palette</div>
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; padding-top: 16px; border-top: 1px solid #1a1a19;">
+    <sc-for list="{{colori}}" as="c" hint-placeholder-count="5">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="height: 64px; border-radius: 4px; background: {{c.hex}}; border: 1px solid #e5e4e0;"></div>
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <div style="font-size: 12.5px; font-weight: 500; color: #1a1a19;">{{c.hex}}</div>
+          <div style="font-size: 11.5px; color: #8b8880;">{{c.nome}}</div>
+          <div style="font-size: 11.5px; color: #57554f;">{{c.ruolo}}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="margin: 40px 0 12px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8880;">Tipografia</div>
+  <div style="display: flex; flex-direction: column; padding-top: 16px; border-top: 1px solid #1a1a19;">
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #e5e4e0;">
+      <div style="font-size: 11.5px; color: #8b8880;">Cifra percorso · 24 / 600</div>
+      <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: {{accento}};">179 m</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #e5e4e0;">
+      <div style="font-size: 11.5px; color: #8b8880;">Titolo scheda · 19 / 600</div>
+      <div style="font-size: 19px; font-weight: 600; letter-spacing: -0.01em;">Scheda del porto</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #e5e4e0;">
+      <div style="font-size: 11.5px; color: #8b8880;">Nome attività · 17 / 600</div>
+      <div style="font-size: 17px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em;">Circolo Nautico Numana</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #e5e4e0;">
+      <div style="font-size: 11.5px; color: #8b8880;">Corpo · 13.5 / 1.6</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #57554f;">Concessionario dell'area nord del porto, con 94 posti barca.</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #e5e4e0;">
+      <div style="font-size: 11.5px; color: #8b8880;">Micro-etichetta · 11 / 500 / .08em</div>
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8880;">Ormeggi e circoli nautici</div>
+    </div>
+  </div>
+
+  <div style="margin: 40px 0 12px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8b8880;">Componenti</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; padding-top: 16px; border-top: 1px solid #1a1a19;">
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Voce d'elenco</div>
+      <div style="border: 1px solid #e5e4e0; border-radius: 4px; overflow: hidden;">
+        <div style="padding: 10.5px 14px; border-bottom: 1px solid #e5e4e0;">
+          <div style="font-size: 14px; font-weight: 500; line-height: 1.35;">Punto Mare</div>
+          <div style="margin-top: 2.25px; font-size: 12.5px; color: #8b8880;">Banchina — consegna gommoni</div>
+        </div>
+        <div style="padding: 10.5px 14px; background: #eef2f4;">
+          <div style="font-size: 14px; font-weight: 500; line-height: 1.35;">Cantiere Navale Jurini</div>
+          <div style="margin-top: 2.25px; font-size: 12.5px; color: #8b8880;">Retro-banchina · selezionata</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Riga dati</div>
+      <div>
+        <div style="display: grid; grid-template-columns: 84px 1fr; gap: 11.25px; padding: 6.3px 0; font-size: 13px; border-top: 1px solid #e5e4e0;"><div style="color: #8b8880;">Dove</div><div style="color: #57554f;">Pontili centrali</div></div>
+        <div style="display: grid; grid-template-columns: 84px 1fr; gap: 11.25px; padding: 6.3px 0; font-size: 13px; border-top: 1px solid #e5e4e0;"><div style="color: #8b8880;">Telefono</div><div><a href="#">+39 071 9330847</a></div></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Navigazione</div>
+      <div style="display: flex; gap: 21px; padding-bottom: 2px;">
+        <div style="font-size: 13px; color: #1a1a19; padding-bottom: 8px; border-bottom: 2px solid #1a1a19;">Satellite</div>
+        <div style="font-size: 13px; color: #8b8880; padding-bottom: 8px; border-bottom: 2px solid transparent;">Modello 3D</div>
+        <div style="font-size: 13px; color: #8b8880; padding-bottom: 8px; border-bottom: 2px solid transparent;">Scheda</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Segnaposto e etichetta</div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px; background: #f7f7f5; border: 1px solid #e5e4e0; border-radius: 4px;">
+        <span style="width: 11px; height: 11px; background: #ffffff; border: 2px solid {{accento}}; border-radius: 50%;"></span>
+        <span style="width: 11px; height: 11px; background: {{accento}}; border: 2px solid {{accento}}; border-radius: 50%;"></span>
+        <span style="padding: 2.4px 6.3px; font-size: 11.5px; color: #57554f; background: rgba(255,255,255,0.92); border: 1px solid #cfcdc7; border-radius: 4px;">Punto Mare</span>
+        <span style="padding: 2.4px 6.3px; font-size: 11.5px; color: #ffffff; background: {{accento}}; border: 1px solid {{accento}}; border-radius: 4px;">Punto Mare</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Campo e menu</div>
+      <div style="display: flex; flex-direction: column; gap: 12.75px;">
+        <div style="padding: 6.75px 0; font-size: 14px; color: #8b8880; border-bottom: 1px solid #cfcdc7;">Cerca un'attività</div>
+        <div style="display: flex; align-items: center; gap: 5px; font-size: 13px; color: #57554f;">
+          <span>Tutte le categorie</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#8b8880" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.75 L5 6.75 L8 3.75"></path></svg>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 11.5px; color: #8b8880;">Comando su tela · link</div>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 14px;">
+        <span style="padding: 4.8px 9px; font-size: 12px; color: #57554f; background: rgba(255,255,255,0.94); border: 1px solid #cfcdc7; border-radius: 4px;">Vista d'insieme</span>
+        <span style="font-size: 12.5px; color: {{accento}}; border-bottom: 1px solid {{accento}};">Calcola dalla mia posizione</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accento":{"editor":"color","default":"#31596b","section":"Palette","tsType":"string"}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accento = this.props.accento ?? '#31596b';
+    return {
+      accento,
+      colori: [
+        { hex: '#ffffff', nome: '--sfondo', ruolo: 'Superficie' },
+        { hex: '#f7f7f5', nome: '--sfondo-tenue', ruolo: 'Superficie 2' },
+        { hex: '#e5e4e0', nome: '--filetto', ruolo: 'Filetto' },
+        { hex: '#cfcdc7', nome: '--filetto-forte', ruolo: 'Filetto forte' },
+        { hex: '#1c1d1c', nome: '--sfondo-scuro', ruolo: 'Fondo tela' },
+        { hex: '#1a1a19', nome: '--inchiostro', ruolo: 'Testo' },
+        { hex: '#57554f', nome: '--inchiostro-2', ruolo: 'Testo corrente' },
+        { hex: '#8b8880', nome: '--inchiostro-3', ruolo: 'Testo tenue' },
+        { hex: accento, nome: '--accento', ruolo: 'Segnaposti, percorso' },
+        { hex: '#eef2f4', nome: '--accento-velo', ruolo: 'Riga selezionata' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
