@@ -53,18 +53,32 @@ export class MappaPorto {
     this.sfondoCorrente = nome;
     this.livelloSfondo = this._creaSfondo(nome).addTo(this.mappa);
     this.livelloSfondo.bringToBack();
+    this.disegnaGeometria();
   }
 
-  /** Disegna moli, pontili e scogliere sopra la foto satellitare. */
-  disegnaGeometria(geo) {
+  /** Etichetta del basemap corrente, per la didascalia. */
+  get etichettaSfondo() {
+    return SFONDI[this.sfondoCorrente].etichetta;
+  }
+
+  /**
+   * Disegna moli, pontili e scogliere sopra lo sfondo.
+   * Il tratto segue il basemap: bianco sulla foto satellitare, inchiostro sulla
+   * mappa stradale, che è chiara e su cui il bianco sparirebbe.
+   */
+  disegnaGeometria(geo = this.geo) {
+    if (!geo) return;
+    this.geo = geo;
     this.gruppoGeometria.clearLayers();
 
-    // Bianco a bassa opacità: sulla foto satellitare la geometria deve leggersi
-    // come un lucido sovrapposto, non competere con l'immagine.
+    const suFoto = this.sfondoCorrente === 'satellite';
+    const tratto = suFoto ? '#ffffff' : '#57554f';
+    const forza = suFoto ? 1 : 0.85;
+
     const stili = {
-      molo: { color: '#ffffff', weight: 4, opacity: 0.45 },
-      scogliera: { color: '#ffffff', weight: 1.5, opacity: 0.5, fillOpacity: 0.1 },
-      pontile: { color: '#ffffff', weight: 2, opacity: 0.65, dashArray: '2 5', lineCap: 'round' },
+      molo: { color: tratto, weight: 4, opacity: 0.45 * forza },
+      scogliera: { color: tratto, weight: 1.5, opacity: 0.5 * forza, fillOpacity: 0.1 * forza },
+      pontile: { color: tratto, weight: 2, opacity: 0.65 * forza, dashArray: '2 5', lineCap: 'round' },
     };
 
     for (const m of geo.moli) {
@@ -185,15 +199,12 @@ export class MappaPorto {
       avanza();
     }
 
-    // Il pannello di dettaglio copre la fascia destra: lo compensiamo con un
-    // padding asimmetrico, altrimenti metà percorso finisce sotto la scheda.
-    const pannello = document.querySelector('.dettaglio.aperto');
-    const margineDestro = pannello ? pannello.offsetWidth + 40 : 60;
-
+    // La scheda vive nella colonna di sinistra, non sopra la mappa: basta un
+    // margine uniforme, con un po' d'aria in più in basso per la didascalia.
     this.mappa.flyToBounds(L.latLngBounds(punti), {
       duration: 1,
       paddingTopLeft: [60, 60],
-      paddingBottomRight: [margineDestro, 80],
+      paddingBottomRight: [60, 90],
     });
   }
 

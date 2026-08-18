@@ -430,10 +430,18 @@ function collegaControlli() {
 
   // Un solo pulsante che alterna i due sfondi, invece di due sempre presenti.
   const btnSfondo = $('#cambia-sfondo');
+  const didascalie = {
+    satellite:
+      'Immagine satellitare attuale. Sopra sono tracciati diga foranea, scogliere e pontili come mappati su OpenStreetMap.',
+    mappa:
+      'Mappa stradale OpenStreetMap, con diga foranea, scogliere e pontili evidenziati.',
+  };
   btnSfondo.addEventListener('click', () => {
     const nuovo = mappa.sfondoCorrente === 'satellite' ? 'mappa' : 'satellite';
     mappa.cambiaSfondo(nuovo);
+    // Il pulsante nomina lo sfondo su cui si passa, la didascalia quello attivo.
     btnSfondo.textContent = nuovo === 'satellite' ? 'Mappa' : 'Satellite';
+    $('#didascalia-mappa').textContent = didascalie[nuovo];
   });
 
   document.addEventListener('keydown', (e) => {
